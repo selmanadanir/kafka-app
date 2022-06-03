@@ -1,0 +1,48 @@
+version: "3.3"
+services: 
+    zookeeper:
+        image: zookeeper
+        hostname: zookeeper
+        # ports:
+        #     - 2181:2181
+    
+    kafka:
+        image: wurstmeister/kafka
+        hostname: kafka
+        # ports:
+        #     - 9092:9092
+        environment:
+            KAFKA_ADVERTISED_HOST_NAME: kafka
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+        depends_on:
+            - zookeeper
+    
+    producer:
+        build: ./producer
+        container_name: kafka-producer
+        hostname: producer
+        ports: 
+            - 7777:3000
+        # Environment variables for wait script
+        environment: 
+            - WAIT_HOSTS=kafka:9092 # producer waits for kafka
+            - WAIT_HOSTS_TIMEOUT=300
+            - WAIT_SLEEP_INTERVAL=2
+            - WAIT_HOST_CONNECT_TIMEOUT=30
+        command: sh -c "/wait && node index.js"
+        depends_on:
+            - kafka
+    
+    consumer:
+        build: ./consumer
+        container_name: kafka-consumer
+        # Environment variables for wait script
+        environment: 
+            - WAIT_HOSTS=producer:3000 # consumer waits for producer
+            - WAIT_HOSTS_TIMEOUT=300
+            - WAIT_SLEEP_INTERVAL=2
+            - WAIT_HOST_CONNECT_TIMEOUT=30
+        command: sh -c "/wait && node index.js"
+        depends_on: 
+            - kafka
+            - producer
